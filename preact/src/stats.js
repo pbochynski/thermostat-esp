@@ -51,11 +51,11 @@ function updateScales(data) {
   }
 
 }
-const boxes = [{x:40,y:20,w:480,h:150},{x:40,y:180,w:480,h:40}];
-const LEGEND ={x:20,y:270};
+const boxes = [{ x: 50, y: 20, w: 350, h: 150 }, { x: 50, y: 180, w: 350, h: 40 }];
+const LEGEND = { x: 20, y: 270 };
 
 function points(data, calcX, calcY, color) {
-  return html`${data.map((d)=>html`<circle cx=${calcX(d.x)} cy=${calcY(d.y)} r="3" fill=${color} style="opacity:0.8" />`)}`
+  return html`${data.map((d) => html`<circle cx=${calcX(d.x)} cy=${calcY(d.y)} r="3" fill=${color} style="opacity:0.8" />`)}`
 }
 
 function line(data, calcX, calcY, color) {
@@ -65,7 +65,7 @@ function line(data, calcX, calcY, color) {
 }
 function area(data, calcX, calcY, color) {
   let points = `${calcX(data[0].x)},${calcY(0)} ${data.map((d) => `${calcX(d.x)},${calcY(d.y)}`).join(' ')} 
-  ${calcX(data[data.length-1].x)},${calcY(0)} ${calcX(data[0].x)},${calcY(0)}`
+  ${calcX(data[data.length - 1].x)},${calcY(0)} ${calcX(data[0].x)},${calcY(0)}`
   return html`<polygon 
   points=${points}
   style="fill:${color};stroke:${color};stroke-width:1;fill-rule:nonzero;opacity:0.8" />`
@@ -73,65 +73,94 @@ function area(data, calcX, calcY, color) {
 
 function legend(label, x, y, color, val) {
   return html`
-  <rect x=${x} y=${y} rx="5" ry="5" width="50" height="21"
+  <rect x=${x} y=${y} rx="5" ry="5" width="55" height="25"
   style="fill:${color};opacity:0.8" />
-  <text fill="black" font-size="13" font-family="Verdana" x=${x + 60} y=${y + 15}>
+  <text fill="black" font-size="15" font-family="Verdana" x=${x + 60} y=${y + 18}>
   ${label}</text>
-  <text fill="black" font-size="13" font-family="Verdana" x=${x + 5} y=${y + 15}>${val}</text>
+  <text fill="white" text-anchor="middle" font-weight="bold" font-size="15" font-family="Verdana" x=${x + 27} y=${y + 18}>${val}</text>
   `
 }
 function formatDate(d) {
-  return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+  return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
 }
 
-function gridX(x,y,w,h,sx) {
+function gridX(x, y, w, h, sx) {
   let steps = []
-  for (let i=0;i<8;++i) {
-    steps[i]={x:x+i*(w/6),val:sx.min+i*(sx.max-sx.min)/6 }
+  for (let i = 0; i < 13; ++i) {
+    steps[i] = { x: x + i * (w / 12), val: sx.min + i * (sx.max - sx.min) / 12 }
   }
-   
-  return html`${steps.map(s=> html`
-  <line x1=${s.x} y1=${y} x2=${s.x} y2=${y+h} style="stroke:gray;stroke-width:1;opacity:0.5" />
-  <text x=${s.x-20} y=${y+h+16} fill="black" font-size="13" font-family="Verdana" >${formatDate(new Date(s.val))}</text>
+
+  return html`${steps.map(s => html`
+  <line x1=${s.x} y1=${y} x2=${s.x} y2=${y + h} style="stroke:gray;stroke-width:1;opacity:0.5" />
+  <text x=${s.x - 30} y=${y + h} fill="gray" font-size="13" font-family="Verdana" transform="rotate(-55 ${s.x + 20},${y + h})">${formatDate(new Date(s.val))}</text>
+  `)}`;
+}
+function steps(min, max, num) {
+
+  let e = 0;
+  let s = (max - min) / num
+  while (Math.round(s * Math.pow(10, e))) {
+    e--;
+  }
+  while (Math.round(s * Math.pow(10, e)) < 1) {
+    e++;
+  }
+  let m = Math.round(s * Math.pow(10, e));
+  if (m > 10 || m < 1) {
+    throw Error("invalid m")
+  }
+  if (m > 2 && m < 5) {
+    m = 5;
+  }
+  if (m > 5) {
+    m = 10;
+  }
+  let step = m / Math.pow(10, e);
+  let res = [];
+  for (let i = Math.floor(min / step); i * step < max; ++i) {
+    res.push(Math.round(i * step * Math.pow(10, e)) / Math.pow(10, e));
+  }
+  return res;
+}
+
+function gridY(x, y, w, h, sy) {
+  let st = steps(sy.min, sy.max, 6).map(v => { return { y: y + h - ((v - sy.min) * h / (sy.max - sy.min)), val: v } });
+
+  return html`${st.map(s => html`
+  <line x1=${x} y1=${s.y} x2=${x + w} y2=${s.y} style="stroke:gray;stroke-width:1;opacity:0.5" />
+  <text x=${x - 40} y=${s.y + 4} fill="gray" font-size="14" font-family="Verdana">${Math.floor(s.val * 100) / 100}</text>
   `)}`;
 }
 
-function gridY(x,y,w,h,sy) {
-  let steps = []
-  for (let i=0;i<8;++i) {
-    steps[i]={y:y+h-i*(h/6),val:sy.min+i*(sy.max-sy.min)/6 }
-  }
-   
-  return html`${steps.map(s=> html`
-  <line x1=${x} y1=${s.y} x2=${x+w} y2=${s.y} style="stroke:gray;stroke-width:1;opacity:0.5" />
-  <text x=${x-40} y=${s.y+4} fill="black">${Math.floor(s.val*100)/100}</text>
-  `)}`;
-}
-function sensorValue(sensors, id) {
-  for (let s of sensors) {
-    if (s.id ==id) {
-      return Math.round(s.t * 100) / 100;
-    }
-  }
-  return "";
-}
-
-export default function Stats({ data, sensors}) {
+export default function Stats({ data, sensors, heating }) {
   updateScales(data);
 
-  return html`<svg viewBox="0 0 550 ${data.datasets.length*30+270}">
-  ${data.scales && gridX(boxes[0].x,boxes[0].y,boxes[0].w, boxes[1].h+boxes[1].y-boxes[0].y,data.scales[0])}
-  ${data.scales && gridY(boxes[0].x,boxes[0].y,boxes[0].w, boxes[0].h,data.scales[1])}
+  const sensorValue = (sensors, id) => {
+    if (id=="heating") {
+      return heating ? "on":"off";
+    }
+    for (let s of sensors) {
+      if (s.id == id) {
+        return Math.round(s.t * 100) / 100;
+      }
+    }
+    return "";
+  }
+  
+  return html`<svg viewBox="0 0 450 ${data.datasets.length * 30 + 270}">
+  ${data.scales && gridX(boxes[0].x, boxes[0].y, boxes[0].w, boxes[1].h + boxes[1].y - boxes[0].y, data.scales[0])}
+  ${data.scales && gridY(boxes[0].x, boxes[0].y, boxes[0].w, boxes[0].h, data.scales[1])}
   ${data.datasets.map((ds, i) => {
     let sx = data.scales[ds.scaleX], sy = data.scales[ds.scaleY];
-    let box=boxes[sy.index];
+    let box = boxes[sy.index];
     const calcX = (dx) => `${box.x + (dx - sx.min) * box.w / (sx.max - sx.min)}`;
     const calcY = (dy) => `${box.y + box.h - ((dy - sy.min) * box.h / (sy.max - sy.min))}`;
-  return html`
-    ${sy.line && line(ds.data,calcX,calcY,color(i))}
-    ${sy.area && area(ds.data,calcX,calcY,"red")}
-    ${sy.points && points(ds.data,calcX,calcY,color(i))}
-    ${legend(ds.alias,LEGEND.x+250*(i%2),LEGEND.y+Math.floor(i/2)*30,sy.area ? "red": color(i),sensorValue(sensors,ds.label))}
+    return html`
+    ${sy.line && line(ds.data, calcX, calcY, color(i))}
+    ${sy.area && area(ds.data, calcX, calcY, "red")}
+    ${sy.points && points(ds.data, calcX, calcY, color(i))}
+    ${legend(ds.alias, LEGEND.x + 250 * (i % 2), LEGEND.y + Math.floor(i / 2) * 30, sy.area ? "red" : color(i), sensorValue(sensors, ds.label))}
     `})}
   </svg>`
 }
+

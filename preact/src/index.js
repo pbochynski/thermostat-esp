@@ -4,9 +4,16 @@ import { html } from 'htm/preact';
 import { useState, useEffect, useRef } from 'preact/hooks';
 import Stats from './stats'
 
+
+const queryParams = new Proxy(new URLSearchParams(window.location.search), {
+  get: (searchParams, prop) => searchParams.get(prop),
+});
+
 let host = location.host;
-// let host = '192.168.0.104';
-var rpc = 'http://' + host + '/rpc'
+let rpc = 'http://' + host + '/rpc'
+if (queryParams.rpc) {
+  rpc = queryParams.rpc;
+}
 
 const knobValues = (() => {
   let d = [];
@@ -44,13 +51,12 @@ export default function App(props) {
   const [stats,setStats] = useState({datasets:[]})
 
   async function post(url, data) {
-    const response = await fetch(url, {
+    const response = await fetch(url+`?access_token=${queryParams.access_token}`, {
       method: 'POST', headers: {
         'Content-Type': 'application/json'
       }, body: JSON.stringify(data)
     })
     const json = await response.json();
-    console.log(json);
     return json;
   }
   const saveTarget = async () => {
@@ -62,8 +68,8 @@ export default function App(props) {
     post(rpc + '/Config.Set', { key: "therm.mode", value: value });
   }
   const load = (period) => {
-    console.log("load triggered")
-    fetch(rpc + `/Stats.${period}`).then((response) => response.json()).then((data) => {
+    let url = `${rpc}/Stats.${period}?access_token=${queryParams.access_token}`;
+    fetch(url).then((response) => response.json()).then((data) => {
       data.scales=[
         {label:"Time", dynamic: false, points:true, min: Date.now()-(period=='Hour'? 3600000 : 86400000), max: Date.now(),index:0},
         {label:"Temperature", dynamic: true, line:true, points:true, index:0},
@@ -92,7 +98,8 @@ export default function App(props) {
     load('Hour');
   },[]);
   const fetchState = (init) => {
-    fetch(rpc + '/State')
+    let url = `${rpc}/State?access_token=${queryParams.access_token}`;
+    fetch(url)
       .then((response) => response.json())
       .then((state) => {
         setSensors(state.sensors)
@@ -141,6 +148,7 @@ export default function App(props) {
     <${CircularSlider}
     label=${edit ? 'press save to apply' : `${tempformat(temp.min)}`}
     labelColor="#005a58"
+    labelFontSize="1.5rem"
     knobColor="#005a58"
     knobDraggable=${power}
     progressColorFrom="#efd41d"
@@ -157,13 +165,13 @@ export default function App(props) {
     />
   </div>`}
   ${!power && html`<div style="text-align:center;color:#005a58">
-  <div style="font-size:1rem">${tempformat(temp.min)}</div>
-  <div style="font-size:4rem">--.-</div>
+  <div style="font-size:1.5rem">${tempformat(temp.min)}</div>
+  <div style="font-size:4rem">--</div>
   </div>`}
   ${edit && html`<div style="text-align:right"><button onClick=${saveTarget} >Save</button><button onClick=${() => setKnob(target)} >Cancel</button></div>`}
   <div><button onClick=${() => load('Day')}>DAY</button><button onClick=${() => load('Hour')}>HOUR</button></div>
-  <div style="min-width:250px">
-  <${Stats} data=${stats} sensors=${sensors}/>    
+  <div style="min-width:300px">
+  <${Stats} data=${stats} sensors=${sensors} heating=${heating}/>    
   </div>
   </div>`;
 }
