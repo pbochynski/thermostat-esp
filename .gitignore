@@ -4,3 +4,4 @@ env.sh
 node_modules
 .DS_Store
 firmware/web
+preact/size-plugin.json
