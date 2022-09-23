@@ -69,8 +69,8 @@ function addState(data, uptime, id, t) {
   let dataset = findOrCreateDataSet(data, id);
   let aggDataset = findOrCreateDataSet(data300, id);
   dataset.data[Math.floor(uptime / 60) % 60] = { x: uptime, y: t };
-  let t1 = Math.floor(uptime / 300) * 300;
-  let t2 = t1 + 300;
+  let t1 = Math.floor(uptime / 600) * 600;
+  let t2 = t1 + 600;
   let sum = 0.0, count = 0;
   let index = Math.floor(t1 / 60) % 60;
   for (let i = index; i >= 0 && i < index + 5; ++i) {
@@ -80,11 +80,11 @@ function addState(data, uptime, id, t) {
     }
   }
   if (count > 0) {
-    aggDataset.data[Math.floor(t1 / 300) % 288] = { x: t1, y: sum / count };
+    aggDataset.data[Math.floor(t1 / 600) % 144] = { x: t1, y: sum / count };
   }
 }
 
-function generate(data, agg, sensorIds, t1, t2, interval, aggInterval) {
+function generate(data, agg, sensorIds, t1, t2, interval) {
   for (let time = t1; time < t2; time += interval) {
     for (let i = 0; i < sensorIds.length; ++i) {
       let t = 22.5 + Math.sin((time / 3000) + 2 * i);
@@ -105,7 +105,7 @@ Timer.set(15000, true, function () {
   }
   addState(data, Sys.uptime(), 'heating', on);
   print('Temp, Min temp, Thermostat state', t,minT, on);
-  GPIO.write(relay, on);
+  GPIO.write(relay, !on); // activate on low level
   if (Cfg.get('therm.remoteurl')) {
     print('calling remote',Cfg.get('therm.remoteurl'))
     RPC.call(Cfg.get('therm.remoteurl'),'State',{id:id,t:t},function(result, err_code, err_msg, ud) {
@@ -142,7 +142,7 @@ RPC.addHandler('State', function (args) {
 
 RPC.addHandler('Generator', function (args) {
   if (args && args.t1 && args.t2 && args.interval) {
-    generate(data, data300, ["esp1", "esp2", "esp3"], args.t1, args.t2, args.interval, 300);
+    generate(data, data300, ["esp1", "esp2", "esp3"], args.t1, args.t2, args.interval);
     return 'ok';
   }
 });

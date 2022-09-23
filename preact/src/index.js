@@ -17,7 +17,7 @@ if (queryParams.rpc) {
 
 const knobValues = (() => {
   let d = [];
-  for (let i = 170; i <= 250; ++i) {
+  for (let i = 170; i <= 270; ++i) {
     d.push(i / 10);
   }
   return d;
@@ -27,8 +27,8 @@ const knobValues = (() => {
 function alias(id) {
   let aliases = {
     heating: "Heating",
-    esp32_06F1B0: "Living Room",
-    esp32_0BA4CC: "Kitchen"
+    esp32_06F1B0: "Kitchen",
+    esp32_0BA4CC: "Bedroom"
   }
   return aliases[id] || id;
 }
@@ -38,6 +38,14 @@ function tempformat(dec) {
   if (dec == null)
     return "--.-";
   return parseInt(dec) + '.' + parseInt(dec * 10) % 10 + '°C';
+}
+function uptimeToString(uptime) {
+  let str ="";
+  if (Math.floor(uptime/86400)) {
+    str+=`${Math.floor(uptime/86400)}d`
+  }
+  str+=`${Math.floor(uptime/3600) % 24}h ${Math.floor(uptime/60) % 60}m ${Math.floor(uptime) % 60}s`;
+  return str;
 }
 
 
@@ -49,6 +57,7 @@ export default function App(props) {
   const [heating, setHeating] = useState(0);
   const [temp, setTemp] = useState({ min: null, max: null })
   const [stats,setStats] = useState({datasets:[]})
+  const [uptime, setUptime] = useState(0);
 
   async function post(url, data) {
     const response = await fetch(url+`?access_token=${queryParams.access_token}`, {
@@ -106,6 +115,7 @@ export default function App(props) {
         setPower(state.power === 'on');
         setTarget(state.target);
         setHeating(state.on);
+        setUptime(state.uptime);
         let min = null, max = null;
         for (let s of state.sensors) {
           if (min === null || s.t < min) {
@@ -172,6 +182,9 @@ export default function App(props) {
   <div><button onClick=${() => load('Day')}>DAY</button><button onClick=${() => load('Hour')}>HOUR</button></div>
   <div style="min-width:300px">
   <${Stats} data=${stats} sensors=${sensors} heating=${heating}/>    
+  </div>
+  <div>
+  Uptime: ${uptimeToString(uptime)}
   </div>
   </div>`;
 }

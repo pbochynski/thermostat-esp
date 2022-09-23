@@ -36,7 +36,7 @@ jobs:
         run: |
           cd preact
           npm install
-          npm run build
+          npm run build -- -c github.config.js
         
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v1
