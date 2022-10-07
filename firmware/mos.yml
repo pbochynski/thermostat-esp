@@ -1,6 +1,6 @@
-author: mongoose-os
-description: A Mongoose OS app skeleton
-version: 1.0.11
+author: pbochynski
+description: Thermostat ESP
+version: 1.0.15
 
 libs_version: ${mos.version}
 modules_version: ${mos.version}
@@ -60,8 +60,8 @@ libs:
   - origin: https://github.com/mongoose-os-libs/ds18b20
   - origin: https://github.com/mongoose-os-libs/dns-sd
   - origin: https://github.com/mongoose-os-libs/dash
-  - origin: https://github.com/mongoose-os-libs/rpc-service-ota
-  - origin: https://github.com/mongoose-os-libs/ota-http-server
+  - origin: https://github.com/mongoose-os-libs/mqtt
+  - origin: https://github.com/mongoose-os-libs/rpc-mqtt
 
 # Used by the mos tool to catch mos binaries incompatible with this file format
 manifest_version: 2017-09-29

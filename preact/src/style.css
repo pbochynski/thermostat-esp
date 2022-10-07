@@ -9,4 +9,14 @@ h1 {
 
 button {
   margin: 3px;
+  padding: 6px;
+  width: 70px;
+}
+
+.svg {
+  width: 100%;
+}
+
+.container {
+
 }

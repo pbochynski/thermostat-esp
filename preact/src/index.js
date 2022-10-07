@@ -3,6 +3,7 @@ import CircularSlider from '@fseehawer/react-circular-slider';
 import { html } from 'htm/preact';
 import { useState, useEffect, useRef } from 'preact/hooks';
 import Stats from './stats'
+import packageJson from '../package.json'
 
 
 const queryParams = new Proxy(new URLSearchParams(window.location.search), {
@@ -40,27 +41,27 @@ function tempformat(dec) {
   return parseInt(dec) + '.' + parseInt(dec * 10) % 10 + '°C';
 }
 function uptimeToString(uptime) {
-  let str ="";
-  if (Math.floor(uptime/86400)) {
-    str+=`${Math.floor(uptime/86400)}d`
+  let str = "";
+  if (Math.floor(uptime / 86400)) {
+    str += `${Math.floor(uptime / 86400)}d `
   }
-  str+=`${Math.floor(uptime/3600) % 24}h ${Math.floor(uptime/60) % 60}m ${Math.floor(uptime) % 60}s`;
+  str += `${Math.floor(uptime / 3600) % 24}h ${Math.floor(uptime / 60) % 60}m ${Math.floor(uptime) % 60}s`;
   return str;
 }
 
-
 export default function App(props) {
-  const [target, setTarget] = useState(21.5);
+  const [target, setTarget] = useState(17);
   const [power, setPower] = useState(true);
   const [sensors, setSensors] = useState([]);
-  const [knob, setKnob] = useState(21.5);
+  const [knob, setKnob] = useState(17);
   const [heating, setHeating] = useState(0);
   const [temp, setTemp] = useState({ min: null, max: null })
-  const [stats,setStats] = useState({datasets:[]})
+  const [stats, setStats] = useState({ datasets: [] })
   const [uptime, setUptime] = useState(0);
+  const [editMode, setEditMode] = useState(false);
 
   async function post(url, data) {
-    const response = await fetch(url+`?access_token=${queryParams.access_token}`, {
+    const response = await fetch(url + `?access_token=${queryParams.access_token}`, {
       method: 'POST', headers: {
         'Content-Type': 'application/json'
       }, body: JSON.stringify(data)
@@ -79,15 +80,15 @@ export default function App(props) {
   const load = (period) => {
     let url = `${rpc}/Stats.${period}?access_token=${queryParams.access_token}`;
     fetch(url).then((response) => response.json()).then((data) => {
-      data.scales=[
-        {label:"Time", dynamic: false, points:true, min: Date.now()-(period=='Hour'? 3600000 : 86400000), max: Date.now(),index:0},
-        {label:"Temperature", dynamic: true, line:true, points:true, index:0},
-        {label:"Heating", dynamic: false, area:true, min:0, max:1.1, index:1}
+      data.scales = [
+        { label: "Time", dynamic: false, points: true, min: Date.now() - (period == 'Hour' ? 3600000 : 86400000), max: Date.now(), index: 0 },
+        { label: "Temperature", dynamic: true, line: true, points: true, index: 0, offset: 50 },
+        { label: "Heating", dynamic: false, area: true, min: 0, max: 5, index: 1 }
       ]
       for (let i = 0; i < data.datasets.length; ++i) {
-        let ds=data.datasets[i];
-        ds.scaleX=0;
-        ds.scaleY = (ds.label==='heating') ? 2:1;
+        let ds = data.datasets[i];
+        ds.scaleX = 0;
+        ds.scaleY = (ds.label === 'heating') ? 2 : 1;
         ds.alias = alias(ds.label);
 
         let delta = Date.now() - data.uptime * 1000;
@@ -103,10 +104,11 @@ export default function App(props) {
     })
 
   }
-  useEffect(()=>{
+  useEffect(() => {
     load('Hour');
-  },[]);
-  const fetchState = (init) => {
+  }, []);
+
+  const fetchState = () => {
     let url = `${rpc}/State?access_token=${queryParams.access_token}`;
     fetch(url)
       .then((response) => response.json())
@@ -126,16 +128,13 @@ export default function App(props) {
           }
         }
         setTemp({ min, max });
-        if (init) {
-          setKnob(state.target);
-        }
       });
-  }
+}
 
   useEffect(() => {
-    fetchState(true);
+    fetchState();
     const interval = setInterval(() => {
-      fetchState(false);
+      fetchState();
     }, 5000);
     return () => clearInterval(interval);
   }, []);
@@ -145,22 +144,25 @@ export default function App(props) {
     savePower(value ? 'on' : 'off');
     setKnob(target);
   }
-  let edit = power && knob != target;
-  
+  let dataIndex = (editMode ? knob : target) * 10 - 170;
+
   const knobChange = (value) => {
     setKnob(value);
   }
   return html`<div class="container">
   <div>
-  <button onClick=${() => { switchPower(true) }} disabled=${power}>ON</button><button onClick=${() => switchPower(false)} disabled=${!power}>OFF</button>
+  ${queryParams.mqtt && !mqttParams.connected && html`<${MqttParams}/>`}
+  <button onClick=${() => { switchPower(true) }} disabled=${power}>ON</button>
+  <button onClick=${() => switchPower(false)} disabled=${!power || editMode}>OFF</button>
+  <button onClick=${() => { setEditMode(true); setKnob(target) }} disabled=${!power || editMode}>SET</button>
   </div>
   ${power && html`<div style="text-align:center">
     <${CircularSlider}
-    label=${edit ? 'press save to apply' : `${tempformat(temp.min)}`}
+    label=${editMode ? 'press save to apply' : `${tempformat(temp.min)}`}
     labelColor="#005a58"
     labelFontSize="1.5rem"
     knobColor="#005a58"
-    knobDraggable=${power}
+    knobDraggable=${editMode}
     progressColorFrom="#efd41d"
     progressColorTo="#ee3510"
     progressSize=${24}
@@ -169,22 +171,27 @@ export default function App(props) {
     data=${knobValues}
     appendToValue="°C"
     prependToValue=${heating ? '♨' : ""}
-    dataIndex=${knob * 10 - 170}
+    dataIndex=${dataIndex}
     onChange=${knobChange}
     width="250"
+    hideKnob=${!editMode}
     />
   </div>`}
   ${!power && html`<div style="text-align:center;color:#005a58">
   <div style="font-size:1.5rem">${tempformat(temp.min)}</div>
   <div style="font-size:4rem">--</div>
   </div>`}
-  ${edit && html`<div style="text-align:right"><button onClick=${saveTarget} >Save</button><button onClick=${() => setKnob(target)} >Cancel</button></div>`}
+  ${editMode && html`<div style="text-align:right"><button onClick=${() => { saveTarget(); setEditMode(false) }} >Save</button>
+  <button onClick=${() => { setKnob(target); setEditMode(false) }} >Cancel</button></div>`}
   <div><button onClick=${() => load('Day')}>DAY</button><button onClick=${() => load('Hour')}>HOUR</button></div>
-  <div style="min-width:300px">
+  <div class="svg">
   <${Stats} data=${stats} sensors=${sensors} heating=${heating}/>    
   </div>
   <div>
   Uptime: ${uptimeToString(uptime)}
+  </div>
+  <div>
+  Version: ${packageJson.version}
   </div>
   </div>`;
 }

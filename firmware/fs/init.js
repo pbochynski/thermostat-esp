@@ -5,7 +5,6 @@ load('api_gpio.js');
 load('api_ds18b20.js');
 load('api_sys.js');
 
-
 let relay = 4;
 let on = 0;
 let target = Cfg.get;
@@ -36,12 +35,12 @@ function findOrCreateDataSet(d, label) {
 }
 
 function getMin(sensors) {
-  let t=null;
-  for (let i=0;i<sensors.length;++i) {
-    if (t===null || sensors[i].t<t) {
-      t=sensors[i].t;
+  let t = null;
+  for (let i = 0; i < sensors.length; ++i) {
+    if (t === null || sensors[i].t < t) {
+      t = sensors[i].t;
     }
-  }  
+  }
   return t;
 }
 
@@ -49,7 +48,7 @@ function getMin(sensors) {
 function getState(data, t, maxAge) {
   let res = { uptime: t, power: Cfg.get('therm.mode'), on: on, target: Cfg.get('therm.t'), sensors: [] };
   for (let di = 0; di < data.datasets.length; ++di) {
-    if (data.datasets[di].label==='heating') {
+    if (data.datasets[di].label === 'heating') {
       continue;
     }
     let index = Math.floor(t / 60) % 60;
@@ -97,18 +96,22 @@ Timer.set(15000, true, function () {
   let id = Cfg.get("device.id");
   let t = DS18B20.get();
   addState(data, Sys.uptime(), id, t);
-  let minT = getMin(getState(data,Sys.uptime(),60).sensors);
-  if (minT<Cfg.get('therm.t')) {
-    on = 1;
-  } else if (minT>Cfg.get('therm.t')+0.1) {
+  let minT = getMin(getState(data, Sys.uptime(), 60).sensors);
+  if (Cfg.get('therm.mode') === 'off') {
     on = 0;
+  } else {
+    if (minT < Cfg.get('therm.t')) {
+      on = 1;
+    } else if (minT > Cfg.get('therm.t') + 0.1) {
+      on = 0;
+    }
   }
   addState(data, Sys.uptime(), 'heating', on);
-  print('Temp, Min temp, Thermostat state', t,minT, on);
+  print('Temp, Min temp, Thermostat state', t, minT, on);
   GPIO.write(relay, !on); // activate on low level
   if (Cfg.get('therm.remoteurl')) {
-    print('calling remote',Cfg.get('therm.remoteurl'))
-    RPC.call(Cfg.get('therm.remoteurl'),'State',{id:id,t:t},function(result, err_code, err_msg, ud) {
+    print('calling remote', Cfg.get('therm.remoteurl'))
+    RPC.call(Cfg.get('therm.remoteurl'), 'State', { id: id, t: t }, function (result, err_code, err_msg, ud) {
       if (err_code !== 0) {
         print("Error: (" + JSON.stringify(err_code) + ') ' + err_msg);
       } else {
@@ -117,10 +120,6 @@ Timer.set(15000, true, function () {
     }, null);
   }
 }, null);
-
-RPC.addHandler('Temp.Read', function (args) {
-  return { value: on };
-});
 
 RPC.addHandler('Stats.Hour', function () {
   data.uptime = Sys.uptime();
@@ -134,7 +133,7 @@ RPC.addHandler('Stats.Day', function () {
 
 RPC.addHandler('State', function (args) {
   if (args && args.id) {
-    print("add state",JSON.stringify(args))
+    print("add state", JSON.stringify(args))
     addState(data, Sys.uptime(), args.id, args.t);
   }
   return getState(data, Sys.uptime(), 60);

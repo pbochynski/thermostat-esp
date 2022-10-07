@@ -1,4 +1,6 @@
 import { html } from 'htm/preact';
+import { useState, useEffect, useRef } from 'preact/hooks';
+
 const COLORS = [
   '#4dc9f6',
   '#f67019',
@@ -51,7 +53,6 @@ function updateScales(data) {
   }
 
 }
-const boxes = [{ x: 50, y: 20, w: 350, h: 150 }, { x: 50, y: 180, w: 350, h: 40 }];
 const LEGEND = { x: 20, y: 270 };
 
 function points(data, calcX, calcY, color) {
@@ -63,6 +64,7 @@ function line(data, calcX, calcY, color) {
   points=${data.map((d) => `${calcX(d.x)},${calcY(d.y)}`).join(' ')}
   style="fill:none;stroke:${color};stroke-width:2;opacity:0.8" />`
 }
+
 function area(data, calcX, calcY, color) {
   let points = `${calcX(data[0].x)},${calcY(0)} ${data.map((d) => `${calcX(d.x)},${calcY(d.y)}`).join(' ')} 
   ${calcX(data[data.length - 1].x)},${calcY(0)} ${calcX(data[0].x)},${calcY(0)}`
@@ -124,7 +126,8 @@ function steps(min, max, num) {
 }
 
 function gridY(x, y, w, h, sy) {
-  let st = steps(sy.min, sy.max, 6).map(v => { return { y: y + h - ((v - sy.min) * h / (sy.max - sy.min)), val: v } });
+  let offset = sy.offset || 0;
+  let st = steps(sy.min, sy.max, 6).map(v => { return { y: y + (h-offset) - ((v - sy.min) * (h-offset) / (sy.max - sy.min)), val: v } });
 
   return html`${st.map(s => html`
   <line x1=${x} y1=${s.y} x2=${x + w} y2=${s.y} style="stroke:gray;stroke-width:1;opacity:0.5" />
@@ -133,11 +136,27 @@ function gridY(x, y, w, h, sy) {
 }
 
 export default function Stats({ data, sensors, heating }) {
+  const refContainer = useRef();
+  const [dimensions, setDimensions] =
+    useState({ width: 0, height: 0 });
+  useEffect(() => {
+    if (refContainer.current) {
+      setDimensions({
+        width: refContainer.current.offsetWidth,
+        height: refContainer.current.offsetHeight,
+      });
+      console.log(refContainer.current.offsetWidth, refContainer.current.offsetHeight);
+    }
+  });
   updateScales(data);
+  const WIDTH = Math.max(300, dimensions.width ? dimensions.width-80 : 300);
+  const HEIGHT = 200;
+  const X=50, Y=20;
+  console.log("dimensions", dimensions, "WIDTH",WIDTH)
 
   const sensorValue = (sensors, id) => {
-    if (id=="heating") {
-      return heating ? "on":"off";
+    if (id == "heating") {
+      return heating ? "on" : "off";
     }
     for (let s of sensors) {
       if (s.id == id) {
@@ -146,21 +165,20 @@ export default function Stats({ data, sensors, heating }) {
     }
     return "";
   }
-  
-  return html`<svg viewBox="0 0 450 ${data.datasets.length * 30 + 270}">
-  ${data.scales && gridX(boxes[0].x, boxes[0].y, boxes[0].w, boxes[1].h + boxes[1].y - boxes[0].y, data.scales[0])}
-  ${data.scales && gridY(boxes[0].x, boxes[0].y, boxes[0].w, boxes[0].h, data.scales[1])}
+  return html`<div ref=${refContainer}><svg height="350px" viewBox="0 0 ${WIDTH+80} ${data.datasets.length * 30 + 270}">
+  ${data.scales && gridX(X, Y, WIDTH, HEIGHT, data.scales[0])}
+  ${data.scales && gridY(X, Y, WIDTH, HEIGHT, data.scales[1])}
   ${data.datasets.map((ds, i) => {
     let sx = data.scales[ds.scaleX], sy = data.scales[ds.scaleY];
-    let box = boxes[sy.index];
-    const calcX = (dx) => `${box.x + (dx - sx.min) * box.w / (sx.max - sx.min)}`;
-    const calcY = (dy) => `${box.y + box.h - ((dy - sy.min) * box.h / (sy.max - sy.min))}`;
+    let offset = sy.offset || 0;
+    const calcX = (dx) => `${X + (dx - sx.min) * WIDTH / (sx.max - sx.min)}`;
+    const calcY = (dy) => `${Y + (HEIGHT-offset) - ((dy - sy.min) * (HEIGHT-offset )/ (sy.max - sy.min))}`;
     return html`
     ${sy.line && line(ds.data, calcX, calcY, color(i))}
     ${sy.area && area(ds.data, calcX, calcY, "red")}
     ${sy.points && points(ds.data, calcX, calcY, color(i))}
-    ${legend(ds.alias, LEGEND.x + 250 * (i % 2), LEGEND.y + Math.floor(i / 2) * 30, sy.area ? "red" : color(i), sensorValue(sensors, ds.label))}
+    ${legend(ds.alias, LEGEND.x + 200 * (i % 2), LEGEND.y + Math.floor(i / 2) * 30, sy.area ? "red" : color(i), sensorValue(sensors, ds.label))}
     `})}
-  </svg>`
+  </svg></div>`
 }
 
