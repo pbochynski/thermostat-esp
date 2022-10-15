@@ -4,6 +4,7 @@ import { html } from 'htm/preact';
 import { useState, useEffect, useRef } from 'preact/hooks';
 import Stats from './stats'
 import packageJson from '../package.json'
+import Usage from './usage';
 
 
 const queryParams = new Proxy(new URLSearchParams(window.location.search), {
@@ -186,6 +187,9 @@ export default function App(props) {
   <div><button onClick=${() => load('Day')}>DAY</button><button onClick=${() => load('Hour')}>HOUR</button></div>
   <div class="svg">
   <${Stats} data=${stats} sensors=${sensors} heating=${heating}/>    
+  </div>
+  <div>
+  <${Usage} data=${stats}/>
   </div>
   <div>
   Uptime: ${uptimeToString(uptime)}

@@ -56,7 +56,10 @@ function updateScales(data) {
 const LEGEND = { x: 20, y: 270 };
 
 function points(data, calcX, calcY, color) {
-  return html`${data.map((d) => html`<circle cx=${calcX(d.x)} cy=${calcY(d.y)} r="3" fill=${color} style="opacity:0.8" />`)}`
+  return html`${data.map((d) =>
+    html`<circle cx=${calcX(d.x)} cy=${calcY(d.y)} r="3" fill=${color} style="opacity:0.8">
+      <title>${String(d.x)}, ${d.y}</title>
+    </circle>`)}`
 }
 
 function line(data, calcX, calcY, color) {
@@ -98,7 +101,6 @@ function gridX(x, y, w, h, sx) {
   `)}`;
 }
 function steps(min, max, num) {
-
   let e = 0;
   let s = (max - min) / num
   while (Math.round(s * Math.pow(10, e))) {
@@ -127,7 +129,7 @@ function steps(min, max, num) {
 
 function gridY(x, y, w, h, sy) {
   let offset = sy.offset || 0;
-  let st = steps(sy.min, sy.max, 6).map(v => { return { y: y + (h-offset) - ((v - sy.min) * (h-offset) / (sy.max - sy.min)), val: v } });
+  let st = steps(sy.min, sy.max, 6).map(v => { return { y: y + (h - offset) - ((v - sy.min) * (h - offset) / (sy.max - sy.min)), val: v } });
 
   return html`${st.map(s => html`
   <line x1=${x} y1=${s.y} x2=${x + w} y2=${s.y} style="stroke:gray;stroke-width:1;opacity:0.5" />
@@ -149,10 +151,10 @@ export default function Stats({ data, sensors, heating }) {
     }
   });
   updateScales(data);
-  const WIDTH = Math.max(300, dimensions.width ? dimensions.width-80 : 300);
+  const WIDTH = Math.max(300, dimensions.width ? dimensions.width - 80 : 300);
   const HEIGHT = 200;
-  const X=50, Y=20;
-  console.log("dimensions", dimensions, "WIDTH",WIDTH)
+  const X = 50, Y = 20;
+  console.log("dimensions", dimensions, "WIDTH", WIDTH)
 
   const sensorValue = (sensors, id) => {
     if (id == "heating") {
@@ -165,14 +167,14 @@ export default function Stats({ data, sensors, heating }) {
     }
     return "";
   }
-  return html`<div ref=${refContainer}><svg height="350px" viewBox="0 0 ${WIDTH+80} ${data.datasets.length * 30 + 270}">
+  return html`<div ref=${refContainer}><svg height="350px" viewBox="0 0 ${WIDTH + 80} ${data.datasets.length * 30 + 270}">
   ${data.scales && gridX(X, Y, WIDTH, HEIGHT, data.scales[0])}
   ${data.scales && gridY(X, Y, WIDTH, HEIGHT, data.scales[1])}
   ${data.datasets.map((ds, i) => {
     let sx = data.scales[ds.scaleX], sy = data.scales[ds.scaleY];
     let offset = sy.offset || 0;
     const calcX = (dx) => `${X + (dx - sx.min) * WIDTH / (sx.max - sx.min)}`;
-    const calcY = (dy) => `${Y + (HEIGHT-offset) - ((dy - sy.min) * (HEIGHT-offset )/ (sy.max - sy.min))}`;
+    const calcY = (dy) => `${Y + (HEIGHT - offset) - ((dy - sy.min) * (HEIGHT - offset) / (sy.max - sy.min))}`;
     return html`
     ${sy.line && line(ds.data, calcX, calcY, color(i))}
     ${sy.area && area(ds.data, calcX, calcY, "red")}
